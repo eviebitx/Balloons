@@ -23,16 +23,16 @@ cp unattended_install.sh ~/archlive/airootfs/root/
 chmod +x ~/archlive/airootfs/root/unattended_install.sh
 ```
 
-### B. Add AI Data (Optional)
-To support the "AI Provisioning" step of the installer, place the data in the ISO root (which appears at `/run/archiso/bootmnt` in the live system):
+### B. Add AI Data (Offline Mode)
+To support the "AI Provisioning" step of the installer and enable offline capabilities, place the data directly into the live root file system.
 
 ```bash
-# Create a folder in the ISO root structure
-mkdir -p ~/archlive/airootfs/../iso/v_os_data
-cp ai_core.py ~/archlive/airootfs/../iso/v_os_data/
-# Copy GGUF weights here if available
+# Create a folder in the airootfs
+mkdir -p ~/archlive/airootfs/opt/v_os
+cp ai_core.py ~/archlive/airootfs/opt/v_os/
+cp mistral_7b.gguf ~/archlive/airootfs/opt/v_os/
 ```
-*Note: Depending on archiso version, files meant for the ISO root (not the live OS root) often go into a specific directory or you can place them in `airootfs` and copy them later.*
+*Note: This increases the ISO size by the size of the model (~4GB for Mistral 7B).*
 
 ### C. Configure Auto-Execution via `.zlogin`
 Modify `~/archlive/airootfs/root/.zlogin` to execute the installer automatically upon login.

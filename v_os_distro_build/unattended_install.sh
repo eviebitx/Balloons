@@ -102,10 +102,17 @@ mkdir -p /mnt/opt/v_os/ai_weights
 # Assume installation media is mounted at /run/archiso/bootmnt
 INSTALL_MEDIA="/run/archiso/bootmnt"
 
-if [ -d "$INSTALL_MEDIA/v_os_data" ]; then
-    echo "[V-OS] Copying AI Core and Weights..."
+# Offline Source (Directly in airootfs)
+OFFLINE_SOURCE="/opt/v_os"
+
+if [ -f "$OFFLINE_SOURCE/mistral_7b.gguf" ]; then
+    echo "[V-OS] Copying AI Core and Weights (Offline Mode)..."
+    cp "$OFFLINE_SOURCE/ai_core.py" /mnt/opt/v_os/
+    cp "$OFFLINE_SOURCE/mistral_7b.gguf" /mnt/opt/v_os/ai_weights/
+elif [ -d "$INSTALL_MEDIA/v_os_data" ]; then
+    echo "[V-OS] Copying AI Core and Weights (ISO Mount Mode)..."
     cp "$INSTALL_MEDIA/v_os_data/ai_core.py" /mnt/opt/v_os/
-    cp "$INSTALL_MEDIA/v_os_data/mistral_123b.gguf" /mnt/opt/v_os/ai_weights/ || echo "[WARN] Weights not found on media."
+    cp "$INSTALL_MEDIA/v_os_data/mistral_7b.gguf" /mnt/opt/v_os/ai_weights/ || echo "[WARN] Weights not found on media."
 else
     echo "[WARN] V-OS Data directory not found on install media. Skipping AI copy."
     # Create a stub
