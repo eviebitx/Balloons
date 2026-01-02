@@ -10,6 +10,7 @@ mod ai;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+    serial_print!("{}", info);
     println!("{}", info);
     loop {}
 }
