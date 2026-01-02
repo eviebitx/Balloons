@@ -7,6 +7,7 @@ mod drivers;
 mod v_console;
 mod syscalls;
 mod ai;
+mod kernel;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -24,5 +25,7 @@ pub extern "C" fn _start() -> ! {
     drivers::pci::scan_pci_bus();
     ai::mistrial::init();
 
-    loop {}
+    // Handover to Mission Control
+    kernel::mission_control::init();
+    kernel::mission_control::autonomous_loop();
 }
