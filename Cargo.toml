@@ -7,6 +7,8 @@ edition = "2024"
 bootloader_api = "0.11"
 spin = "0.9"
 uart_16550 = "0.3.0"
+pc-keyboard = "0.7"
+pic8259 = "0.10"
 
 [dependencies.lazy_static]
 version = "1.4"

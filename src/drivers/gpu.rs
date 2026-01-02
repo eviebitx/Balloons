@@ -1,6 +1,7 @@
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo, PixelFormat};
 use spin::Mutex;
 use super::font;
+use core::fmt;
 
 pub struct GpuDriver {
     framebuffer: Option<FrameBuffer>,
@@ -60,14 +61,7 @@ impl GpuDriver {
         if let Some(raster) = font::get_raster(c) {
             for (row_i, row) in raster.iter().enumerate() {
                 for col_i in 0..8 {
-                    // Our font data: bit 7 is left-most pixel (or right? usually left is MSB 0x80)
-                    // Let's assume standard: MSB is left pixel.
-                    // My manual font data has bits set.
-                    // Loop 0..8. If I test (row >> (7 - col_i)), I get left-to-right.
-                    // The previous code used `(row >> col_i) & 1` which is right-to-left if col_i is 0..8 (0 is LSB).
-                    // Standard bitmap fonts usually store row 0 as top row.
-
-                    // Let's use `(row >> (7 - col_i)) & 1` for standard MSB-left.
+                    // Standard: MSB is left pixel.
                     if (row >> (7 - col_i)) & 1 == 1 {
                         self.draw_pixel(x + col_i, y + row_i, color);
                     }
@@ -89,16 +83,12 @@ impl GpuDriver {
             let center_x = info.width / 2;
             let center_y = info.height / 2;
 
-            // Draw Background (Deep Grey)
             self.draw_rect(0, 0, info.width, info.height, [20, 20, 20]);
 
-            // Draw Logo Box (Red)
             let box_size = 100;
             self.draw_rect(center_x - box_size/2, center_y - box_size/2, box_size, box_size, [200, 0, 0]);
 
-            // Draw Text
             let text = "V-OS WAR-RIG";
-            // Centering text roughly (8px per char)
             let text_width = text.len() * 8;
             self.draw_string(center_x - text_width / 2, center_y + 60, text, [255, 255, 255]);
         }
@@ -122,4 +112,118 @@ impl GpuDriver {
             self.draw_rect(half_width - 1, 0, 2, height, [255, 255, 255]);
         }
     }
+}
+
+// Console Writer Implementation
+pub struct ConsoleWriter {
+    x_pos: usize,
+    y_pos: usize,
+    start_x: usize,
+    start_y: usize,
+    width: usize,
+    height: usize,
+    color: [u8; 3],
+}
+
+impl ConsoleWriter {
+    pub const fn new(start_x: usize, start_y: usize, width: usize, height: usize, color: [u8; 3]) -> Self {
+        Self {
+            x_pos: start_x,
+            y_pos: start_y,
+            start_x,
+            start_y,
+            width,
+            height,
+            color,
+        }
+    }
+
+    fn new_line(&mut self) {
+        self.x_pos = self.start_x;
+        self.y_pos += 8 + 2; // Line height + padding
+        if self.y_pos >= self.start_y + self.height {
+             // Reset to top (scroll not implemented)
+             // Or better: wrap around or clear.
+             // For now, clear area logic is complex without backing store.
+             // Just wrap to top.
+             self.y_pos = self.start_y;
+             // Clear screen area?
+             // Need access to GPU to clear.
+             // Can't easily do it here without locking GPU again.
+             // We'll just overwrite for now.
+        }
+    }
+
+    pub fn write_byte(&mut self, byte: u8) {
+        match byte {
+             b'\n' => self.new_line(),
+             0x08 => { // Backspace
+                 if self.x_pos > self.start_x {
+                     self.x_pos -= 8;
+                     // Draw space to erase (requires GPU access)
+                     let mut gpu = GPU.lock();
+                     gpu.draw_char(self.x_pos, self.y_pos, ' ', [0,0,0]); // Assuming black background
+                 }
+             },
+             byte => {
+                 if self.x_pos >= self.start_x + self.width {
+                     self.new_line();
+                 }
+                 let c = byte as char;
+                 let mut gpu = GPU.lock();
+                 gpu.draw_char(self.x_pos, self.y_pos, c, self.color);
+                 self.x_pos += 8;
+             }
+        }
+    }
+
+    pub fn write_string(&mut self, s: &str) {
+        for byte in s.bytes() {
+            self.write_byte(byte);
+        }
+    }
+}
+
+impl fmt::Write for ConsoleWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+// Global Consoles
+pub static LEFT_CONSOLE: Mutex<ConsoleWriter> = Mutex::new(ConsoleWriter::new(10, 40, 380, 500, [0, 255, 0])); // Green Text
+pub static RIGHT_CONSOLE: Mutex<ConsoleWriter> = Mutex::new(ConsoleWriter::new(410, 40, 380, 500, [255, 255, 255])); // White Text
+
+// Macros for GUI printing
+#[macro_export]
+macro_rules! left_print {
+    ($($arg:tt)*) => ($crate::drivers::gpu::left_print_fmt(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! left_println {
+    () => ($crate::left_print!("\n"));
+    ($($arg:tt)*) => ($crate::left_print!("{}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! right_print {
+    ($($arg:tt)*) => ($crate::drivers::gpu::right_print_fmt(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! right_println {
+    () => ($crate::right_print!("\n"));
+    ($($arg:tt)*) => ($crate::right_print!("{}\n", format_args!($($arg)*)));
+}
+
+pub fn left_print_fmt(args: fmt::Arguments) {
+    use core::fmt::Write;
+    LEFT_CONSOLE.lock().write_fmt(args).unwrap();
+}
+
+pub fn right_print_fmt(args: fmt::Arguments) {
+    use core::fmt::Write;
+    RIGHT_CONSOLE.lock().write_fmt(args).unwrap();
 }
