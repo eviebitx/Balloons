@@ -1,0 +1,11 @@
+# Persistence Configuration
+# This file mimics the bootloader configuration to load a secondary 'tools' image.
+# In a real scenario, this would be grub.cfg or limine.cfg.
+
+ENTRY V-OS War-Rig
+    KERNEL_PATH=/boot/v_os_war_rig
+    MODULE_PATH=/boot/tools_image.bin
+    MODULE_CMDLINE=tools
+
+    MODULE_PATH=/boot/mistrial_123b.bin
+    MODULE_CMDLINE=ai_weights_set

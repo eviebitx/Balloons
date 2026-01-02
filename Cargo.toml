@@ -1,0 +1,22 @@
+[package]
+name = "v_os_war_rig"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spin = "0.9"
+
+[dependencies.lazy_static]
+version = "1.4"
+features = ["spin_no_std"]
+
+[dependencies.x86_64]
+version = "0.15"
+default-features = false
+features = ["instructions"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
