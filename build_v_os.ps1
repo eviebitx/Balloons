@@ -2,23 +2,22 @@
 Write-Host "--- V-OS War-Rig: Initiating Build Sequence ---" -ForegroundColor Cyan
 
 # 1. Compile the Rust Kernel
-Write-Host "[1/3] Compiling Rust Kernel (Nightly)..." -ForegroundColor Yellow
-cargo build --release
+Write-Host "[1/2] Compiling Rust Kernel..." -ForegroundColor Yellow
+cargo build --release --target x86_64-unknown-none
 if ($LASTEXITCODE -ne 0) { Write-Error "Compilation Failed!"; exit }
 
-# 2. Create the Bootable Binary
-Write-Host "[2/3] Generating Boot Image..." -ForegroundColor Yellow
-cargo bootimage --release
-if ($LASTEXITCODE -ne 0) { Write-Error "Bootimage Generation Failed!"; exit }
+# 2. Build Disk Image using Helper
+Write-Host "[2/2] Generating Bootable ISO (UEFI)..." -ForegroundColor Yellow
+$kernelBin = "../target/x86_64-unknown-none/release/v_os_war_rig"
 
-# 3. Create the ISO (Assuming xorriso is installed via Choco or WSL)
-# Note: This step packages the bin into a format Vultr can boot.
-Write-Host "[3/3] Packaging into V-OS-WarRig.iso..." -ForegroundColor Yellow
-$binPath = "target/x86_64-unknown-none/release/bootimage-v_os_war_rig.bin"
-$isoPath = "V-OS-WarRig.iso"
+Set-Location builder
+cargo +nightly run --release -- $kernelBin
+if ($LASTEXITCODE -ne 0) { Write-Error "Disk Image Creation Failed!"; Set-Location ..; exit }
+Set-Location ..
 
-# Using xorriso to create a hybrid ISO
-xorriso -as mkisofs -R -f -e $binPath -no-emul-boot -o $isoPath .
-if ($LASTEXITCODE -ne 0) { Write-Error "ISO Creation Failed!"; exit }
-
-Write-Host "--- SUCCESS: V-OS-WarRig.iso is ready for deployment! ---" -ForegroundColor Green
+if (Test-Path "builder/V-OS-WarRig.iso") {
+    Move-Item "builder/V-OS-WarRig.iso" -Destination "." -Force
+    Write-Host "--- SUCCESS: V-OS-WarRig.iso is ready! ---" -ForegroundColor Green
+} else {
+    Write-Error "ISO not found after build!"
+}
