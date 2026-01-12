@@ -1,0 +1,26 @@
+[package]
+name = "v_os_war_rig"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bootloader_api = "0.11"
+spin = "0.9"
+uart_16550 = "0.3.0"
+pc-keyboard = "0.7"
+pic8259 = "0.10"
+
+[dependencies.lazy_static]
+version = "1.4"
+features = ["spin_no_std"]
+
+[dependencies.x86_64]
+version = "0.15"
+default-features = false
+features = ["instructions"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
